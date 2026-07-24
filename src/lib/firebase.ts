@@ -21,6 +21,21 @@ export const db = firebaseConfig.firestoreDatabaseId
 const CASES_COLLECTION = "cases";
 const NOTIFS_COLLECTION = "notifications";
 
+// Helper to remove 'undefined' fields because Firestore setDoc throws an error on undefined
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleanObj: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        cleanObj[key] = sanitizeForFirestore(value);
+      } else {
+        cleanObj[key] = value;
+      }
+    }
+  }
+  return cleanObj;
+}
+
 // Realtime Cases Listener
 export function subscribeToCases(callback: (cases: PathologyCase[]) => void) {
   const q = query(collection(db, CASES_COLLECTION));
@@ -56,8 +71,10 @@ export function subscribeToNotifications(callback: (notifs: NotificationLog[]) =
 // Save or Update Case to Firestore
 export async function saveCaseToFirestore(pCase: PathologyCase) {
   try {
+    const cleanCase = sanitizeForFirestore(pCase);
     const caseRef = doc(db, CASES_COLLECTION, pCase.id);
-    await setDoc(caseRef, pCase, { merge: true });
+    await setDoc(caseRef, cleanCase, { merge: true });
+    console.log("Successfully saved case to Firestore:", pCase.caseNumber);
   } catch (err) {
     console.error("Failed to save case to Firestore:", err);
   }
@@ -68,6 +85,7 @@ export async function deleteCaseFromFirestore(caseId: string) {
   try {
     const caseRef = doc(db, CASES_COLLECTION, caseId);
     await deleteDoc(caseRef);
+    console.log("Successfully deleted case from Firestore:", caseId);
   } catch (err) {
     console.error("Failed to delete case from Firestore:", err);
   }
@@ -76,8 +94,10 @@ export async function deleteCaseFromFirestore(caseId: string) {
 // Save Notification to Firestore
 export async function saveNotificationToFirestore(notif: NotificationLog) {
   try {
+    const cleanNotif = sanitizeForFirestore(notif);
     const notifRef = doc(db, NOTIFS_COLLECTION, notif.id);
-    await setDoc(notifRef, notif, { merge: true });
+    await setDoc(notifRef, cleanNotif, { merge: true });
+    console.log("Successfully saved notification to Firestore:", notif.id);
   } catch (err) {
     console.error("Failed to save notification to Firestore:", err);
   }

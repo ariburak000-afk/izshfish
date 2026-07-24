@@ -37,14 +37,28 @@ export default function App() {
 
     // Subscribe to Firestore cases
     const unsubscribeCases = subscribeToCases((remoteCases) => {
-      setCases(remoteCases);
-      saveCases(remoteCases);
+      if (remoteCases.length > 0) {
+        setCases(remoteCases);
+        saveCases(remoteCases);
+      } else {
+        const localCases = getStoredCases();
+        if (localCases.length > 0) {
+          localCases.forEach((c) => saveCaseToFirestore(c));
+        }
+      }
     });
 
     // Subscribe to Firestore notifications
     const unsubscribeNotifs = subscribeToNotifications((remoteNotifs) => {
-      setNotifications(remoteNotifs);
-      saveNotifications(remoteNotifs);
+      if (remoteNotifs.length > 0) {
+        setNotifications(remoteNotifs);
+        saveNotifications(remoteNotifs);
+      } else {
+        const localNotifs = getStoredNotifications();
+        if (localNotifs.length > 0) {
+          localNotifs.forEach((n) => saveNotificationToFirestore(n));
+        }
+      }
     });
 
     return () => {
@@ -55,6 +69,10 @@ export default function App() {
 
   // Handler: Add new case (Technician)
   const handleAddCase = (newCase: PathologyCase) => {
+    // Optimistic UI update
+    setCases((prev) => [newCase, ...prev.filter((c) => c.id !== newCase.id)]);
+    saveCases([newCase, ...getStoredCases().filter((c) => c.id !== newCase.id)]);
+
     saveCaseToFirestore(newCase);
 
     // If case is added as completed, create a notification
@@ -63,13 +81,15 @@ export default function App() {
       const dateFormatted = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
       const msg = `${newCase.caseNumber} numaralı vakanın ${newCase.tests.join(' ')} çalışması ${dateFormatted} tarihinde tamamlandı.`;
       
-      createNotificationForCase(newCase, msg, 'completed');
+      const notif = createNotificationForCase(newCase, msg, 'completed');
+      setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
     } else {
-      createNotificationForCase(
+      const notif = createNotificationForCase(
         newCase,
         `${newCase.caseNumber} vaka kaydı alındı.`,
         'updated'
       );
+      setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
     }
   };
 
@@ -95,15 +115,21 @@ export default function App() {
       technicianNotes: notes || existing.technicianNotes,
     };
 
+    setCases((prev) => prev.map((c) => (c.id === caseId ? updatedCaseObj : c)));
+    saveCases(getStoredCases().map((c) => (c.id === caseId ? updatedCaseObj : c)));
+
     saveCaseToFirestore(updatedCaseObj);
 
     const actionMsg = `${updatedCaseObj.caseNumber} numaralı vakanın ${updatedCaseObj.tests.join(' ')} çalışması ${dateFormatted} tarihinde tamamlandı.`;
-    createNotificationForCase(updatedCaseObj, actionMsg, status === 'completed' ? 'completed' : 'updated');
+    const notif = createNotificationForCase(updatedCaseObj, actionMsg, status === 'completed' ? 'completed' : 'updated');
+    setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
   };
 
   // Handler: Delete Case
   const handleDeleteCase = (caseId: string) => {
     if (confirm('Bu vakayı silmek istediğinize emin misiniz?')) {
+      setCases((prev) => prev.filter((c) => c.id !== caseId));
+      saveCases(getStoredCases().filter((c) => c.id !== caseId));
       deleteCaseFromFirestore(caseId);
     }
   };
