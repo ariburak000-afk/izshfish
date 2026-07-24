@@ -125,9 +125,22 @@ export default function App() {
     setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
   };
 
+  // Handler: Edit full case
+  const handleEditCase = (updatedCase: PathologyCase) => {
+    setCases((prev) => prev.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
+    saveCases(getStoredCases().map((c) => (c.id === updatedCase.id ? updatedCase : c)));
+    saveCaseToFirestore(updatedCase);
+
+    const now = new Date();
+    const dateFormatted = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
+    const actionMsg = `${updatedCase.caseNumber} numaralı vakanın bilgileri güncellendi (${dateFormatted}).`;
+    const notif = createNotificationForCase(updatedCase, actionMsg, 'updated');
+    setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+  };
+
   // Handler: Delete Case
   const handleDeleteCase = (caseId: string) => {
-    if (confirm('Bu vakayı silmek istediğinize emin misiniz?')) {
+    if (confirm('Bu vakayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
       setCases((prev) => prev.filter((c) => c.id !== caseId));
       saveCases(getStoredCases().filter((c) => c.id !== caseId));
       deleteCaseFromFirestore(caseId);
@@ -224,6 +237,7 @@ export default function App() {
             cases={cases}
             onAddCase={handleAddCase}
             onUpdateCaseStatus={handleUpdateCaseStatus}
+            onEditCase={handleEditCase}
             onDeleteCase={handleDeleteCase}
           />
         )}

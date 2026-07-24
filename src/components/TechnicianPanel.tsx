@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   FlaskConical,
   User,
   Building2,
@@ -42,6 +43,7 @@ interface TechnicianPanelProps {
     completedTests?: string[],
     notes?: string
   ) => void;
+  onEditCase?: (updatedCase: PathologyCase) => void;
   onDeleteCase: (caseId: string) => void;
 }
 
@@ -49,6 +51,7 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
   cases,
   onAddCase,
   onUpdateCaseStatus,
+  onEditCase,
   onDeleteCase,
 }) => {
   // Authentication State
@@ -76,6 +79,92 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
   const [technicianNotes, setTechnicianNotes] = useState(
     'FISH ALK ve ROS1 çalışması tamamlandı. Sinyaller sayıldı, değerlendirmeye hazır.'
   );
+
+  // Edit Modal State
+  const [editingCase, setEditingCase] = useState<PathologyCase | null>(null);
+  const [editForm, setEditForm] = useState<{
+    caseNumber: string;
+    patientInitials: string;
+    tissueSource: string;
+    doctorName: string;
+    department: string;
+    status: CaseStatus;
+    priority: PriorityLevel;
+    blockNumber: string;
+    technicianNotes: string;
+    tests: string[];
+    customTestInput: string;
+  }>({
+    caseNumber: '',
+    patientInitials: '',
+    tissueSource: '',
+    doctorName: '',
+    department: '',
+    status: 'pending',
+    priority: 'urgent',
+    blockNumber: '',
+    technicianNotes: '',
+    tests: [],
+    customTestInput: '',
+  });
+
+  const handleOpenEditModal = (c: PathologyCase) => {
+    setEditingCase(c);
+    setEditForm({
+      caseNumber: c.caseNumber,
+      patientInitials: c.patientInitials || '',
+      tissueSource: c.tissueSource,
+      doctorName: c.doctorName,
+      department: c.department,
+      status: c.status,
+      priority: c.priority,
+      blockNumber: c.blockNumber || '',
+      technicianNotes: c.technicianNotes || '',
+      tests: [...c.tests],
+      customTestInput: '',
+    });
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCase || !onEditCase) return;
+
+    if (!editForm.caseNumber.trim()) {
+      alert('Vaka numarası boş olamaz.');
+      return;
+    }
+    if (editForm.tests.length === 0) {
+      alert('En az bir test seçmelisiniz.');
+      return;
+    }
+
+    const isCompletedNow = editForm.status === 'completed';
+    const updated: PathologyCase = {
+      ...editingCase,
+      caseNumber: editForm.caseNumber.trim().toUpperCase(),
+      patientInitials: editForm.patientInitials.trim() || undefined,
+      tissueSource: editForm.tissueSource.trim(),
+      doctorName: editForm.doctorName.trim(),
+      department: editForm.department.trim(),
+      status: editForm.status,
+      priority: editForm.priority,
+      blockNumber: editForm.blockNumber.trim() || undefined,
+      technicianNotes: editForm.technicianNotes.trim() || undefined,
+      tests: editForm.tests,
+      completedTests: isCompletedNow ? [...editForm.tests] : editingCase.completedTests,
+      completedAt: isCompletedNow
+        ? editingCase.completedAt || new Date().toISOString()
+        : editForm.status === 'pending' || editForm.status === 'in_progress'
+        ? undefined
+        : editingCase.completedAt,
+    };
+
+    onEditCase(updated);
+    setEditingCase(null);
+    setToastMessage(`✅ ${updated.caseNumber} numaralı vaka bilgileri başarıyla güncellendi!`);
+    setShowSuccessToast(true);
+    setTimeout(() => setShowSuccessToast(false), 4000);
+  };
 
   // UI state
   const [activeTab, setActiveTab] = useState<'add' | 'quick_complete' | 'all'>('add');
@@ -612,59 +701,98 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingOrInProgressCases.map((c) => (
-                <div
-                  key={c.id}
-                  className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-300 transition-all shadow-2xs"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-slate-900 text-base bg-white px-2.5 py-0.5 rounded border border-slate-200">
-                          {c.caseNumber}
+              {pendingOrInProgressCases.map((c) => {
+                const isUrgent = c.priority === 'urgent';
+                return (
+                  <div
+                    key={c.id}
+                    className={`rounded-xl p-4 flex flex-col justify-between transition-all shadow-2xs relative overflow-hidden ${
+                      isUrgent
+                        ? 'bg-rose-50/80 border-2 border-rose-500 shadow-rose-100/80 ring-2 ring-rose-200/60'
+                        : 'bg-slate-50 border border-slate-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    {isUrgent && (
+                      <div className="-mx-4 -mt-4 mb-3 px-3 py-1 bg-gradient-to-r from-rose-600 to-red-600 text-white text-[10px] font-black flex items-center justify-between shadow-xs">
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+                          YÜKSEK ACİL VAKA
                         </span>
-                        {c.priority === 'urgent' && (
-                          <span className="bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-extrabold px-2 py-0.5 rounded">
-                            ACİL
-                          </span>
-                        )}
+                        <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                          Öncelikli
+                        </span>
                       </div>
-                      <span className="text-xs text-amber-800 font-bold bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                        {c.status === 'in_progress' ? 'Devam Ediyor' : 'Beklemede'}
-                      </span>
+                    )}
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-mono font-black text-base px-2.5 py-0.5 rounded border ${
+                            isUrgent ? 'bg-rose-100 text-rose-950 border-rose-300' : 'bg-white text-slate-900 border-slate-200'
+                          }`}>
+                            {c.caseNumber}
+                          </span>
+                          {isUrgent && (
+                            <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
+                              <AlertTriangle className="w-3 h-3 text-amber-300" />
+                              ACİL
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-amber-800 font-bold bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                          {c.status === 'in_progress' ? 'Devam Ediyor' : 'Beklemede'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs font-bold text-slate-800">{c.tissueSource}</p>
+                      <p className="text-xs text-indigo-700 font-bold mt-1">
+                        İstenen Testler: <span className="text-slate-900 font-extrabold">{c.tests.join(', ')}</span>
+                      </p>
+                      <p className="text-xs text-slate-500 font-medium mt-1">Hekim: {c.doctorName} ({c.department})</p>
                     </div>
 
-                    <p className="text-xs font-bold text-slate-800">{c.tissueSource}</p>
-                    <p className="text-xs text-indigo-700 font-bold mt-1">
-                      İstenen Testler: <span className="text-slate-900 font-extrabold">{c.tests.join(', ')}</span>
-                    </p>
-                    <p className="text-xs text-slate-500 font-medium mt-1">Hekim: {c.doctorName} ({c.department})</p>
-                  </div>
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditModal(c)}
+                          title="Vakayı Düzenle"
+                          className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-all flex items-center gap-1 border border-indigo-200"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          Düzenle
+                        </button>
+                        <button
+                          onClick={() => onDeleteCase(c.id)}
+                          title="Vakayı Sil"
+                          className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-400 font-medium">Kayıt: {formatDateTurkish(c.createdAt)}</span>
-                    <button
-                      onClick={() => {
-                        onUpdateCaseStatus(
-                          c.id,
-                          'completed',
-                          [...c.tests],
-                          `${c.tests.join(' ve ')} çalışması tamamlandı. Değerlendirmeye hazır.`
-                        );
-                        setToastMessage(
-                          `📢 ${c.caseNumber} numaralı vakanın ${c.tests.join(' ')} çalışması tamamlandı olarak işaretlendi ve ${c.doctorName} hekimine bildirildi!`
-                        );
-                        setShowSuccessToast(true);
-                        setTimeout(() => setShowSuccessToast(false), 4000);
-                      }}
-                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
-                    >
-                      <Check className="w-4 h-4 text-white" />
-                      "Çalışıldı" Yap & Bildir
-                    </button>
+                      <button
+                        onClick={() => {
+                          onUpdateCaseStatus(
+                            c.id,
+                            'completed',
+                            [...c.tests],
+                            `${c.tests.join(' ve ')} çalışması tamamlandı. Değerlendirmeye hazır.`
+                          );
+                          setToastMessage(
+                            `📢 ${c.caseNumber} numaralı vakanın ${c.tests.join(' ')} çalışması tamamlandı olarak işaretlendi ve ${c.doctorName} hekimine bildirildi!`
+                          );
+                          setShowSuccessToast(true);
+                          setTimeout(() => setShowSuccessToast(false), 4000);
+                        }}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Check className="w-4 h-4 text-white" />
+                        "Çalışıldı" Yap & Bildir
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -710,16 +838,33 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredCases.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50 transition-all">
-                      <td className="py-3 px-3 font-mono font-black text-slate-900">
-                        {c.caseNumber}
-                        {c.blockNumber && (
-                          <span className="text-[10px] text-slate-400 block font-normal">
-                            Blok: {c.blockNumber}
-                          </span>
-                        )}
-                      </td>
+                  filteredCases.map((c) => {
+                    const isUrgent = c.priority === 'urgent';
+                    return (
+                      <tr
+                        key={c.id}
+                        className={`transition-all ${
+                          isUrgent
+                            ? 'bg-rose-50/80 hover:bg-rose-100/80 border-l-4 border-l-rose-600 font-medium'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="py-3 px-3 font-mono font-black text-slate-900">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{c.caseNumber}</span>
+                            {isUrgent && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-600 text-white font-black text-[9px] shadow-xs animate-pulse">
+                                <AlertTriangle className="w-3 h-3 text-amber-300" />
+                                ACİL
+                              </span>
+                            )}
+                          </div>
+                          {c.blockNumber && (
+                            <span className="text-[10px] text-slate-500 block font-normal">
+                              Blok: {c.blockNumber}
+                            </span>
+                          )}
+                        </td>
                       <td className="py-3 px-3">
                         <div className="font-bold text-slate-800">{c.tissueSource}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -763,6 +908,13 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
                         {formatDateTurkish(c.completedAt || c.createdAt)}
                       </td>
                       <td className="py-3 px-3 text-right space-x-1">
+                        <button
+                          onClick={() => handleOpenEditModal(c)}
+                          title="Vakayı Düzenle"
+                          className="p-1.5 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-800 border border-indigo-200 transition-all"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
                         {c.status !== 'completed' && (
                           <button
                             onClick={() => {
@@ -788,10 +940,188 @@ export const TechnicianPanel: React.FC<TechnicianPanelProps> = ({
                         </button>
                       </td>
                     </tr>
-                  ))
+                  );
+                })
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CASE MODAL */}
+      {editingCase && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Vakayı Düzenle</h3>
+                  <p className="text-xs text-slate-500 font-medium">Vaka No: <span className="font-bold text-slate-800">{editingCase.caseNumber}</span></p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCase(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Vaka Numarası (ör: M983)</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.caseNumber}
+                    onChange={(e) => setEditForm({ ...editForm, caseNumber: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Hasta Baş Harfleri / Kod</label>
+                  <input
+                    type="text"
+                    value={editForm.patientInitials}
+                    onChange={(e) => setEditForm({ ...editForm, patientInitials: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Doku / Numune Kaynağı</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.tissueSource}
+                    onChange={(e) => setEditForm({ ...editForm, tissueSource: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">İsteyen Hekim</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.doctorName}
+                    onChange={(e) => setEditForm({ ...editForm, doctorName: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Bölüm / Anabilim Dalı</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.department}
+                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Blok / Kasete No</label>
+                  <input
+                    type="text"
+                    value={editForm.blockNumber}
+                    onChange={(e) => setEditForm({ ...editForm, blockNumber: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Vaka Durumu</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as CaseStatus })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    <option value="pending">Beklemede</option>
+                    <option value="in_progress">Devam Ediyor</option>
+                    <option value="completed">Tamamlandı (Çalışıldı)</option>
+                    <option value="repeat_requested">Tekrar İstendi</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Öncelik Derecesi</label>
+                  <select
+                    value={editForm.priority}
+                    onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as PriorityLevel })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    <option value="routine">Rutin</option>
+                    <option value="urgent">Acil</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Çalışılacak FISH / Moleküler Testler</label>
+                <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  {COMMON_TEST_PANELS.map((test) => {
+                    const isSelected = editForm.tests.includes(test);
+                    return (
+                      <button
+                        key={test}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setEditForm({ ...editForm, tests: editForm.tests.filter((t) => t !== test) });
+                          } else {
+                            setEditForm({ ...editForm, tests: [...editForm.tests, test] });
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {test}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tekniker Notu / Sonuç Özeti</label>
+                <textarea
+                  rows={2}
+                  value={editForm.technicianNotes}
+                  onChange={(e) => setEditForm({ ...editForm, technicianNotes: e.target.value })}
+                  placeholder="Laboratuvar notları..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingCase(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  Değişiklikleri Kaydet
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

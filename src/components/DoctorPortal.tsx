@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Stethoscope,
   Filter,
   Share2,
@@ -254,24 +255,42 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
             {filteredCases.map((c) => {
               const isCompleted = c.status === 'completed';
               const isInProgress = c.status === 'in_progress';
+              const isUrgent = c.priority === 'urgent';
 
               return (
                 <div
                   key={c.id}
-                  className={`bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between transition-all hover:shadow-md ${
-                    isCompleted
-                      ? 'border-emerald-200/80 hover:border-emerald-400'
+                  className={`border rounded-2xl p-5 shadow-sm flex flex-col justify-between transition-all hover:shadow-md relative overflow-hidden ${
+                    isUrgent && !isCompleted
+                      ? 'bg-rose-50/60 border-2 border-rose-500 shadow-rose-100/80 ring-2 ring-rose-300/40 hover:border-rose-600'
+                      : isCompleted
+                      ? 'bg-white border-emerald-200/80 hover:border-emerald-400'
                       : isInProgress
-                      ? 'border-amber-200/80 hover:border-amber-400'
-                      : 'border-slate-200 hover:border-indigo-300'
+                      ? 'bg-white border-amber-200/80 hover:border-amber-400'
+                      : 'bg-white border-slate-200 hover:border-indigo-300'
                   }`}
                 >
+                  {isUrgent && !isCompleted && (
+                    <div className="-mx-5 -mt-5 mb-3 px-4 py-1.5 bg-gradient-to-r from-rose-600 to-red-600 text-white text-[11px] font-black flex items-center justify-between shadow-xs">
+                      <span className="flex items-center gap-1.5 tracking-wide">
+                        <AlertTriangle className="w-4 h-4 text-amber-300 animate-bounce" />
+                        YÜKSEK ACİL VAKA
+                      </span>
+                      <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
+                        <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping inline-block"></span>
+                        Öncelikli
+                      </span>
+                    </div>
+                  )}
+
                   <div>
                     {/* Card Header */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-lg font-black text-slate-900 tracking-wider bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-mono text-lg font-black tracking-wider px-2.5 py-1 rounded-lg border ${
+                            isUrgent ? 'bg-rose-100 text-rose-950 border-rose-300' : 'bg-slate-100 text-slate-900 border-slate-200'
+                          }`}>
                             {c.caseNumber}
                           </span>
                           {c.patientInitials && (
@@ -279,8 +298,9 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
                               {c.patientInitials}
                             </span>
                           )}
-                          {c.priority === 'urgent' && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                          {isUrgent && (
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-600 text-white shadow-xs flex items-center gap-1 animate-pulse">
+                              <AlertTriangle className="w-3 h-3 text-amber-300" />
                               ACİL
                             </span>
                           )}
