@@ -19,6 +19,7 @@ import {
   User,
   FlaskConical,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { PathologyCase, FilterState } from '../types';
 import { COMMON_DOCTORS, COMMON_DEPARTMENTS } from '../data/initialData';
@@ -27,11 +28,13 @@ import { formatDateTurkish } from '../utils/storage';
 interface DoctorPortalProps {
   cases: PathologyCase[];
   onSelectCaseForTimeline: (c: PathologyCase) => void;
+  onDeleteCase?: (caseId: string) => void;
 }
 
 export const DoctorPortal: React.FC<DoctorPortalProps> = ({
   cases,
   onSelectCaseForTimeline,
+  onDeleteCase,
 }) => {
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
@@ -310,8 +313,8 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
                         </p>
                       </div>
 
-                      {/* Status Badge */}
-                      <div>
+                      {/* Status Badge & Actions */}
+                      <div className="flex items-center gap-1.5">
                         {isCompleted && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-xs">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -333,6 +336,19 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
                             Tekrar İstendi
                           </span>
+                        )}
+
+                        {onDeleteCase && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteCase(c.id);
+                            }}
+                            title="Vakayı Sil"
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all ml-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                     </div>

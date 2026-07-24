@@ -35,17 +35,24 @@ export default function App() {
     setCases(getStoredCases());
     setNotifications(getStoredNotifications());
 
+    let isInitialCasesSync = true;
+    let isInitialNotifsSync = true;
+
     // Subscribe to Firestore cases
     const unsubscribeCases = subscribeToCases((remoteCases) => {
       if (remoteCases.length > 0) {
         setCases(remoteCases);
         saveCases(remoteCases);
-      } else {
+      } else if (isInitialCasesSync) {
         const localCases = getStoredCases();
         if (localCases.length > 0) {
           localCases.forEach((c) => saveCaseToFirestore(c));
         }
+      } else {
+        setCases([]);
+        saveCases([]);
       }
+      isInitialCasesSync = false;
     });
 
     // Subscribe to Firestore notifications
@@ -53,12 +60,16 @@ export default function App() {
       if (remoteNotifs.length > 0) {
         setNotifications(remoteNotifs);
         saveNotifications(remoteNotifs);
-      } else {
+      } else if (isInitialNotifsSync) {
         const localNotifs = getStoredNotifications();
         if (localNotifs.length > 0) {
           localNotifs.forEach((n) => saveNotificationToFirestore(n));
         }
+      } else {
+        setNotifications([]);
+        saveNotifications([]);
       }
+      isInitialNotifsSync = false;
     });
 
     return () => {
@@ -229,6 +240,7 @@ export default function App() {
           <DoctorPortal
             cases={cases}
             onSelectCaseForTimeline={(c) => setSelectedCaseForTimeline(c)}
+            onDeleteCase={handleDeleteCase}
           />
         )}
 
