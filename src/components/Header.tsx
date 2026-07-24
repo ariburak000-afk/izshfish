@@ -8,6 +8,9 @@ interface HeaderProps {
   notifications: NotificationLog[];
   onMarkAllNotifsAsRead: () => void;
   onResetData: () => void;
+  lastSyncTime: Date;
+  onManualSync: () => void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +19,9 @@ export const Header: React.FC<HeaderProps> = ({
   notifications,
   onMarkAllNotifsAsRead,
   onResetData,
+  lastSyncTime,
+  onManualSync,
+  isSyncing = false,
 }) => {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -54,6 +60,35 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Actions & Navigation Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Last Sync Indicator Badge */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 text-emerald-950 text-xs font-bold shadow-2xs"
+              title="Sistem periyodik ve anlık olarak canlı senkronize edilir"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-600 font-medium hidden md:inline">Son Senkronizasyon:</span>
+                <span className="font-mono font-black text-emerald-900">
+                  {lastSyncTime.toLocaleTimeString('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onManualSync}
+                title="Şimdi Kontrol Et & Senkronize Et"
+                className="p-1 hover:bg-emerald-100 rounded-lg text-emerald-700 transition-all active:scale-95 ml-0.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-600' : ''}`} />
+              </button>
+            </div>
+
             {/* Share / App Link button */}
             <button
               onClick={handleCopyAppUrl}

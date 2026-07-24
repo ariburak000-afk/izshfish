@@ -20,6 +20,7 @@ import {
   FlaskConical,
   ExternalLink,
   Trash2,
+  ArrowUpDown,
 } from 'lucide-react';
 import { PathologyCase, FilterState } from '../types';
 import { COMMON_DOCTORS, COMMON_DEPARTMENTS } from '../data/initialData';
@@ -28,13 +29,11 @@ import { formatDateTurkish } from '../utils/storage';
 interface DoctorPortalProps {
   cases: PathologyCase[];
   onSelectCaseForTimeline: (c: PathologyCase) => void;
-  onDeleteCase?: (caseId: string) => void;
 }
 
 export const DoctorPortal: React.FC<DoctorPortalProps> = ({
   cases,
   onSelectCaseForTimeline,
-  onDeleteCase,
 }) => {
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
@@ -44,6 +43,8 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
     testFilter: 'all',
     timeRange: 'all',
   });
+
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'priority'>('date_desc');
 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -76,6 +77,20 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
       filters.departmentFilter === 'all' || c.department === filters.departmentFilter;
 
     return matchesSearch && matchesStatus && matchesDoctor && matchesDept;
+  });
+
+  // Sorting Logic
+  const sortedCases = [...filteredCases].sort((a, b) => {
+    if (sortBy === 'priority') {
+      if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
+      if (a.priority !== 'urgent' && b.priority === 'urgent') return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    if (sortBy === 'date_asc') {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    // date_desc
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   // Share text builder
@@ -145,15 +160,15 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
           <Search className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Vaka No ile ara (ör: M983), Hekim İsmi veya FISH Testi (ör: ALK, ROS1, HER2)..."
+            placeholder="Vaka No (ör: M983) veya İsteyen Hekim Adı (ör: Dr. Ahmet Yılmaz) ile hızlı arama yapın..."
             value={filters.searchQuery}
             onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white font-medium transition-all shadow-inner"
+            className="w-full pl-11 pr-24 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white font-medium transition-all shadow-inner"
           />
           {filters.searchQuery && (
             <button
               onClick={() => setFilters({ ...filters, searchQuery: '' })}
-              className="absolute right-4 top-3 text-xs text-slate-500 hover:text-slate-900 bg-slate-200 px-2.5 py-1 rounded-lg font-semibold"
+              className="absolute right-3 top-2.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-xl font-bold transition-all"
             >
               Temizle
             </button>
@@ -228,18 +243,61 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
 
       {/* CASES CARDS LIST */}
       <div>
-        <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500">
-            Listelenen Vaka Sayısı: <span className="text-slate-900 font-bold">{filteredCases.length}</span>
+            Listelenen Vaka Sayısı: <span className="text-slate-900 font-extrabold">{sortedCases.length}</span>
+            {filters.searchQuery && (
+              <span className="text-indigo-600 ml-2 font-semibold">
+                ("{filters.searchQuery}" sonuçları)
+              </span>
+            )}
           </span>
-          {filters.searchQuery && (
-            <span className="text-xs text-indigo-600 font-semibold">
-              "{filters.searchQuery}" için sonuçlar
+
+          {/* Sorting Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+              <ArrowUpDown className="w-3.5 h-3.5 text-indigo-600" /> Sırala:
             </span>
-          )}
+
+            <button
+              onClick={() => setSortBy('date_desc')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 ${
+                sortBy === 'date_desc'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Tarihe Göre (Yeni → Eski)
+            </button>
+
+            <button
+              onClick={() => setSortBy('date_asc')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 ${
+                sortBy === 'date_asc'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Tarihe Göre (Eski → Yeni)
+            </button>
+
+            <button
+              onClick={() => setSortBy('priority')}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 ${
+                sortBy === 'priority'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
+              Aciliyet Durumuna Göre
+            </button>
+          </div>
         </div>
 
-        {filteredCases.length === 0 ? (
+        {sortedCases.length === 0 ? (
           <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3">
             <Search className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm font-bold text-slate-800">Aradığınız kriterlere uygun vaka bulunamadı.</p>
@@ -255,7 +313,7 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCases.map((c) => {
+            {sortedCases.map((c) => {
               const isCompleted = c.status === 'completed';
               const isInProgress = c.status === 'in_progress';
               const isUrgent = c.priority === 'urgent';
@@ -336,19 +394,6 @@ export const DoctorPortal: React.FC<DoctorPortalProps> = ({
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
                             Tekrar İstendi
                           </span>
-                        )}
-
-                        {onDeleteCase && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteCase(c.id);
-                            }}
-                            title="Vakayı Sil"
-                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all ml-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         )}
                       </div>
                     </div>

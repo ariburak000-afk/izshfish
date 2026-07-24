@@ -29,6 +29,18 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [selectedCaseForTimeline, setSelectedCaseForTimeline] = useState<PathologyCase | null>(null);
 
+  // Real-time synchronization timestamp state
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Periodic heartbeat timer to refresh sync status every 15 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLastSyncTime(new Date());
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Load initial local cache and subscribe to real-time Firestore
   useEffect(() => {
     // Initial local cache
@@ -40,6 +52,7 @@ export default function App() {
 
     // Subscribe to Firestore cases
     const unsubscribeCases = subscribeToCases((remoteCases) => {
+      setLastSyncTime(new Date());
       if (remoteCases.length > 0) {
         setCases(remoteCases);
         saveCases(remoteCases);
@@ -57,6 +70,7 @@ export default function App() {
 
     // Subscribe to Firestore notifications
     const unsubscribeNotifs = subscribeToNotifications((remoteNotifs) => {
+      setLastSyncTime(new Date());
       if (remoteNotifs.length > 0) {
         setNotifications(remoteNotifs);
         saveNotifications(remoteNotifs);
@@ -175,6 +189,17 @@ export default function App() {
     }
   };
 
+  // Handler: Manual Sync Check
+  const handleManualSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      setCases(getStoredCases());
+      setNotifications(getStoredNotifications());
+      setLastSyncTime(new Date());
+      setIsSyncing(false);
+    }, 500);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased selection:bg-indigo-500 selection:text-white pb-16">
       {/* Navigation Header */}
@@ -184,6 +209,9 @@ export default function App() {
         notifications={notifications}
         onMarkAllNotifsAsRead={handleMarkAllNotifsAsRead}
         onResetData={handleResetData}
+        lastSyncTime={lastSyncTime}
+        onManualSync={handleManualSync}
+        isSyncing={isSyncing}
       />
 
       {/* Main View Container */}
@@ -240,7 +268,6 @@ export default function App() {
           <DoctorPortal
             cases={cases}
             onSelectCaseForTimeline={(c) => setSelectedCaseForTimeline(c)}
-            onDeleteCase={handleDeleteCase}
           />
         )}
 
@@ -269,6 +296,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
             <span className="text-slate-300">Sistem Aktif & Anlık Senkronize</span>
+            <span className="text-slate-500 font-mono text-[10px] hidden sm:inline ml-2">
+              (Son Senkronizasyon: {lastSyncTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })})
+            </span>
           </div>
           <div className="hidden md:flex items-center gap-4 text-slate-400">
             <span>Toplam Vaka: <strong className="text-white">{cases.length}</strong></span>
