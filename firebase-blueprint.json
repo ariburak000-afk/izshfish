@@ -1,0 +1,39 @@
+{
+  "collections": {
+    "cases": {
+      "schema": {
+        "id": "string",
+        "caseNumber": "string",
+        "patientInitials": "string",
+        "tissueSource": "string",
+        "tests": "array",
+        "completedTests": "array",
+        "doctorName": "string",
+        "department": "string",
+        "status": "string",
+        "priority": "string",
+        "createdAt": "string",
+        "completedAt": "string",
+        "technicianNotes": "string",
+        "blockNumber": "string",
+        "weekNumber": "number",
+        "year": "number"
+      },
+      "indexes": []
+    },
+    "notifications": {
+      "schema": {
+        "id": "string",
+        "caseId": "string",
+        "caseNumber": "string",
+        "title": "string",
+        "message": "string",
+        "timestamp": "string",
+        "read": "boolean",
+        "type": "string",
+        "doctorName": "string"
+      },
+      "indexes": []
+    }
+  }
+}

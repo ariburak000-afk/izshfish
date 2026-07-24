@@ -1,0 +1,6 @@
+{
+  "name": "Patoloji Vaka ve Test Takip Sistemi",
+  "description": "Patoloji teknikerlerinin haftalık vakaları ve FISH çalışmalarını (ALK, ROS1, HER2, 1p19q, BCL2, BCL6, CMYC) sisteme girdiği, hekimlerin web üzerinden anlık takip edip bildirim alabildiği platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
